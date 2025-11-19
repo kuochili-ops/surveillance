@@ -212,4 +212,59 @@ with col4:
     st.metric(label="需人工覆核數", value=(df["Match Confidence"] < 0.7).sum())
 
 st.markdown("---")
+# 篩選器
+st.sidebar.header("篩選器")
+min_date = df["Alert Date"].min().date()
+max_date = df["Alert Date"].max().date()
+date_range = st.sidebar.date_input("警示日期範圍", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+source_options = df["Source"].unique().tolist()
+selected_sources = st.sidebar.multiselect("來源類型", options=source_options, default=source_options)
+keyword = st.sidebar.text_input("關鍵字搜尋（品名 / 成分 / 摘要）", value="")
+
+start_date, end_date = date_range if isinstance(date_range, tuple) else (min_date, max_date)
+df_filtered = df[
+    (df["Alert Date"] >= pd.to_datetime(start_date)) &
+    (df["Alert Date"] <= pd.to_datetime(end_date)) &
+    (df["Source"].isin(selected_sources))
+]
+if keyword.strip():
+    kw = keyword.strip().lower()
+    df_filtered = df_filtered[df_filtered.apply(lambda row: kw in str(row).lower(), axis=1)]
+
+# 主表格顯示
+st.markdown("### 📋 配對結果一覽")
+st.dataframe(df_filtered, use_container_width=True)
+
+# 詳情展開
+with st.expander("📦 展開每筆警示詳情"):
+    for _, row in df_filtered.iterrows():
+        st.markdown(f"**🧪 {row['US Product']}**（{row['Ingredient']}）")
+        st.markdown(f"- 警示日期：{row['Alert Date'].date()}｜來源：{row['Source']}")
+        st.markdown(f"- 台灣配對：{row['TW Match Status']} → `{row['TW Product']}`")
+        st.markdown(f"- 摘要：{row['Risk Summary']}")
+        st.markdown(f"- 建議：{row['Action Summary']}")
+        st.markdown(f"- 詳情：{row['FDA Excerpt']}")
+        st.markdown("---")
+
+# FDA 官網爬蟲按鈕
+st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
+if st.button("立即更新"):
+    latest_alerts = fetch_fda_dsc_alerts()
+    fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
+    df = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
+    df["Alert Date"] = pd.to_datetime(df["Alert Date"])
+    st.dataframe(df, use_container_width=True)
+
+# 網頁監視：檢查是否有新警示
+st.markdown("### 🔍 檢查 FDA 官網是否有新警示")
+if st.button("檢查新警示並比對"):
+    new_alerts = get_new_alerts()
+    if new_alerts:
+        st.success(f"發現 {len(new_alerts)} 筆新警示！")
+        fda_list_new = parse_dsc_to_fda_list(new_alerts)
+        df_new = pd.DataFrame(match_fda_to_tfda(fda_list_new, tfda_list))
+        df_new["Alert Date"] = pd.to_datetime(df_new["Alert Date"])
+        st.dataframe(df_new, use_container_width=True)
+    else:
+        st.info("目前沒有新警示。")
 

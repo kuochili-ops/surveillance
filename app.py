@@ -5,9 +5,6 @@ from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 import os
 
-# -------------------------
-# 標準化處理
-# -------------------------
 def normalize_text(text):
     if not text:
         return ""
@@ -19,10 +16,6 @@ def normalize_text(text):
         .replace("毫克", "mg")
         .replace("毫升", "ml")
     )
-
-# -------------------------
-# 配對模組
-# -------------------------
 def fuzzy_match(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
@@ -97,64 +90,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "FDA Excerpt": fda["fda_excerpt"]
             })
     return results
-
-# -------------------------
-# FDA 官網爬蟲 + 新警示監視
-# -------------------------
-def fetch_fda_dsc_alerts():
-    url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    alerts = []
-    for item in soup.select(".view-content .views-row"):
-        title_tag = item.select_one("h3 a")
-        date_tag = item.select_one(".date-display-single")
-        if title_tag and date_tag:
-            alerts.append({
-                "title": title_tag.text.strip(),
-                "link": "https://www.fda.gov" + title_tag["href"],
-                "date": date_tag.text.strip()
-            })
-    return alerts
-
-def parse_dsc_to_fda_list(alerts):
-    parsed = []
-    for alert in alerts:
-        parsed.append({
-            "alert_date": pd.to_datetime(alert["date"], errors="coerce"),
-            "source": "DSC",
-            "us_product": alert["title"].split(":")[0].strip(),
-            "ingredient": "",
-            "form": "",
-            "risk_summary": alert["title"],
-            "action_summary": "請參考原文",
-            "fda_excerpt": f"詳情請見：{alert['link']}"
-        })
-    return parsed
-
-def load_last_seen():
-    if os.path.exists("last_seen_alerts.json"):
-        try:
-            return pd.read_json("last_seen_alerts.json")["title"].tolist()
-        except:
-            return []
-    return []
-
-def save_last_seen(alerts):
-    titles = [a["title"] for a in alerts]
-    pd.DataFrame({"title": titles}).to_json("last_seen_alerts.json")
-
-def get_new_alerts():
-    latest = fetch_fda_dsc_alerts()
-    seen = load_last_seen()
-    new_alerts = [a for a in latest if a["title"] not in seen]
-    save_last_seen(latest)
-    return new_alerts
-
-# -------------------------
 # 預設 FDA 藥品清單
-# -------------------------
 fda_list = [
     {
         "alert_date": "2025-11-01",
@@ -175,42 +111,51 @@ fda_list = [
         "risk_summary": "嚴重低血鈣：洗腎病人風險增加",
         "action_summary": "建議監測血鈣",
         "fda_excerpt": "Risk of severe hypocalcemia in dialysis patients receiving denosumab."
+    },
+    {
+        "alert_date": "2025-09-30",
+        "source": "DSC",
+        "us_product": "Ocaliva",
+        "ingredient": "obeticholic acid",
+        "form": "5 mg 錠劑",
+        "risk_summary": "原發性膽汁性肝硬化：晚期肝病病人風險增加",
+        "action_summary": "建議調整劑量",
+        "fda_excerpt": "Serious liver injury reported in non-cirrhotic PBC patients treated with obeticholic acid."
     }
 ]
 
-# -------------------------
 # Streamlit 主畫面
-# -------------------------
 st.set_page_config(page_title="藥品安全警示比對平台", layout="wide")
 st.title("藥品安全警示比對平台")
 
-# 直接讀取同目錄下的 37_2b.csv
+# 讀取 TFDA 許可證清單
 try:
     df_tfda = pd.read_csv("37_2b.csv")
     required_cols = ["tw_product", "ingredient", "form", "license_id"]
     if not all(col in df_tfda.columns for col in required_cols):
-        st.error("37_2b.csv 欄位缺漏，請確認包含：tw_product, ingredient, form, license_id")
+        st.error("❌ 37_2b.csv 欄位缺漏，請確認包含：tw_product, ingredient, form, license_id")
         tfda_list = []
     else:
         tfda_list = df_tfda[required_cols].to_dict(orient="records")
 except Exception as e:
-    st.error(f"讀取 37_2b.csv 失敗：{e}")
+    st.error(f"❌ 讀取 37_2b.csv 失敗：{e}")
     tfda_list = []
 
+# 執行配對
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 
-# 防呆：空資料
+# 防呆檢查
 if df.empty:
-    st.warning("⚠️ 沒有配對結果，請確認 TFDA 資料與 FDA 清單格式。")
+    st.error("⚠️ 沒有配對結果，請確認 TFDA 資料與 FDA 清單格式。")
     st.stop()
 
-# 防呆：欄位缺失
-if "Alert Date" in df.columns:
-    df["Alert Date"] = pd.to_datetime(df["Alert Date"])
-else:
-    st.warning("⚠️ 欄位 'Alert Date' 不存在，無法轉換日期格式。")
+missing_cols = [col for col in ["Alert Date", "Source", "US Product"] if col not in df.columns]
+if missing_cols:
+    st.error(f"⚠️ 缺少欄位：{', '.join(missing_cols)}，請檢查 match_fda_to_tfda() 是否正確產生欄位。")
+    st.dataframe(df)
     st.stop()
 
+df["Alert Date"] = pd.to_datetime(df["Alert Date"])
 # KPI 卡片
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -223,6 +168,7 @@ with col4:
     st.metric(label="需人工覆核數", value=(df["Match Confidence"] < 0.7).sum())
 
 st.markdown("---")
+
 # 篩選器
 st.sidebar.header("篩選器")
 min_date = df["Alert Date"].min().date()
@@ -262,9 +208,12 @@ st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
 if st.button("立即更新"):
     latest_alerts = fetch_fda_dsc_alerts()
     fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
-    df = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
-    df["Alert Date"] = pd.to_datetime(df["Alert Date"])
-    st.dataframe(df, use_container_width=True)
+    df_web = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
+    if not df_web.empty and "Alert Date" in df_web.columns:
+        df_web["Alert Date"] = pd.to_datetime(df_web["Alert Date"])
+        st.dataframe(df_web, use_container_width=True)
+    else:
+        st.warning("⚠️ 官網警示比對失敗或資料格式異常。")
 
 # 網頁監視：檢查是否有新警示
 st.markdown("### 🔍 檢查 FDA 官網是否有新警示")
@@ -274,8 +223,10 @@ if st.button("檢查新警示並比對"):
         st.success(f"發現 {len(new_alerts)} 筆新警示！")
         fda_list_new = parse_dsc_to_fda_list(new_alerts)
         df_new = pd.DataFrame(match_fda_to_tfda(fda_list_new, tfda_list))
-        df_new["Alert Date"] = pd.to_datetime(df_new["Alert Date"])
-        st.dataframe(df_new, use_container_width=True)
+        if not df_new.empty and "Alert Date" in df_new.columns:
+            df_new["Alert Date"] = pd.to_datetime(df_new["Alert Date"])
+            st.dataframe(df_new, use_container_width=True)
+        else:
+            st.warning("⚠️ 新警示資料格式異常，無法顯示。")
     else:
         st.info("目前沒有新警示。")
-

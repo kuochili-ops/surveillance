@@ -213,6 +213,3 @@ with col4:
 
 st.markdown("---")
 
-# 篩選器
-st.sidebar.header("篩選器")
-

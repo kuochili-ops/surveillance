@@ -206,4 +206,9 @@ st.markdown("---")
 st.sidebar.header("篩選器")
 min_date = df["Alert Date"].min().date()
 max_date = df["Alert Date"].max().date()
-date_range = st.sidebar.date_input("警示日期範圍",
+date_range = st.sidebar.date_input(
+    "警示日期範圍",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
+)

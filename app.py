@@ -195,14 +195,18 @@ fda_list = [
 st.set_page_config(page_title="藥品安全警示比對平台", layout="wide")
 st.title("藥品安全警示比對平台")
 
-uploaded_file = st.sidebar.file_uploader("上傳 TFDA 許可證清單（CSV 或 Excel）", type=["csv", "xlsx"])
-if uploaded_file:
-    tfda_list = load_tfda_file(uploaded_file)
-else:
-    tfda_list = [
-        {"tw_product": "樂意保", "ingredient": "lecanemab", "form": "100 mg/mL 注射液", "license_id": "MOHW-BI-001273"},
-        {"tw_product": "骨松益", "ingredient": "denosumab", "form": "60 mg/1 mL 注射液", "license_id": "衛部藥製字第XXXX號"}
-    ]
+try:
+    df_tfda = pd.read_csv("37_2b.csv")
+    required_cols = ["tw_product", "ingredient", "form", "license_id"]
+    if not all(col in df_tfda.columns for col in required_cols):
+        st.error("37_2b.csv 欄位缺漏，請確認包含：tw_product, ingredient, form, license_id")
+        tfda_list = []
+    else:
+        tfda_list = df_tfda[required_cols].to_dict(orient="records")
+except Exception as e:
+    st.error(f"讀取 37_2b.csv 失敗：{e}")
+    tfda_list = []
+
 
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 df["Alert Date"] = pd.to_datetime(df["Alert Date"])

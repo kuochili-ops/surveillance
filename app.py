@@ -4,9 +4,6 @@ import requests
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 
-# -------------------------
-# 配對模組
-# -------------------------
 def fuzzy_match(a, b):
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
@@ -120,6 +117,9 @@ def fetch_fda_dsc_alerts():
             })
     return alerts
 
+# -------------------------
+# FDA 警示轉換成 fda_list 結構
+# -------------------------
 def parse_dsc_to_fda_list(alerts):
     parsed = []
     for alert in alerts:
@@ -136,47 +136,12 @@ def parse_dsc_to_fda_list(alerts):
     return parsed
 
 # -------------------------
-# 預設 FDA 藥品清單（2025）
-# -------------------------
-fda_list = [
-    {
-        "alert_date": "2025-11-01",
-        "source": "DSC",
-        "us_product": "Leqembi",
-        "ingredient": "lecanemab",
-        "form": "100 mg/mL 注射液",
-        "risk_summary": "阿茲海默症 ARIA：APOE ε4 攜帶者風險增加",
-        "action_summary": "建議基因檢測",
-        "fda_excerpt": "FDA recommends MRI monitoring to reduce ARIA risk, especially in APOE ε4 carriers."
-    },
-    {
-        "alert_date": "2025-10-15",
-        "source": "DSC",
-        "us_product": "Prolia",
-        "ingredient": "denosumab",
-        "form": "60 mg/1 mL 注射液",
-        "risk_summary": "嚴重低血鈣：洗腎病人風險增加",
-        "action_summary": "建議監測血鈣",
-        "fda_excerpt": "Risk of severe hypocalcemia in dialysis patients receiving denosumab."
-    },
-    {
-        "alert_date": "2025-09-30",
-        "source": "DSC",
-        "us_product": "Ocaliva",
-        "ingredient": "obeticholic acid",
-        "form": "5 mg 錠劑",
-        "risk_summary": "原發性膽汁性肝硬化：晚期肝病病人風險增加",
-        "action_summary": "建議調整劑量",
-        "fda_excerpt": "Serious liver injury reported in non-cirrhotic PBC patients treated with obeticholic acid."
-    }
-]
-
-# -------------------------
-# Streamlit UI
+# Streamlit 主畫面
 # -------------------------
 st.set_page_config(page_title="藥品安全警示比對平台", layout="wide")
 st.title("藥品安全警示比對平台")
 
+# TFDA 許可證匯入
 uploaded_file = st.sidebar.file_uploader("上傳 TFDA 許可證清單（CSV 或 Excel）", type=["csv", "xlsx"])
 if uploaded_file:
     tfda_list = load_tfda_file(uploaded_file)
@@ -186,6 +151,7 @@ else:
         {"tw_product": "骨松益", "ingredient": "denosumab", "form": "60 mg/1 mL 注射液", "license_id": "衛部藥製字第XXXX號"}
     ]
 
+# 預設比對結果
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 df["Alert Date"] = pd.to_datetime(df["Alert Date"])
 
@@ -204,4 +170,50 @@ st.markdown("---")
 
 # 篩選器
 st.sidebar.header("篩選器")
-min_date = df["Alert Date"].min
+min_date = df["Alert Date"].min().date()
+max_date = df["Alert Date"].max().date()
+date_range = st.sidebar.date_input("警示日期範圍", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+source_options = df["Source"].unique().tolist()
+selected_sources = st.sidebar.multiselect("來源類型", options=source_options, default=source_options)
+keyword = st.sidebar.text_input("關鍵字搜尋（品名 / 成分 / 摘要）", value="")
+
+# 套用篩選
+start_date, end_date = date_range if isinstance(date_range, tuple) else (min_date, max_date)
+df_filtered = df[
+    (df["Alert Date"] >= pd.to_datetime(start_date)) &
+    (df["Alert Date"] <= pd.to_datetime(end_date)) &
+    (df["Source"].isin(selected_sources))
+]
+if keyword.strip():
+    kw = keyword.strip().lower()
+    df_filtered = df_filtered[df_filtered.apply(lambda row: kw in str(row).lower(), axis=1)]
+
+
+# 主表格顯示
+st.markdown("### 📋 配對結果一覽")
+st.dataframe(df_filtered, use_container_width=True)
+
+# 詳情展開
+with st.expander("📦 展開每筆警示詳情"):
+    for _, row in df_filtered.iterrows():
+        st.markdown(f"**🧪 {row['US Product']}**（{row['Ingredient']}）")
+        st.markdown(f"- 警示日期：{row['Alert Date'].date()}｜來源：{row['Source']}")
+        st.markdown(f"- 台灣配對：{row['TW Match Status']} → `{row['TW Product']}`")
+        st.markdown(f"- 摘要：{row['Risk Summary']}")
+        st.markdown(f"- 建議：{row['Action Summary']}")
+        st.markdown(f"- 詳情：{row['FDA Excerpt']}")
+        st.markdown("---")
+
+# FDA 官網爬蟲按鈕與結果呈現
+st.markdown("### 🔁 抓取並比對 FDA 官網警示")
+if st.button("一鍵更新並比對"):
+    latest_alerts = fetch_fda_dsc_alerts()
+    fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
+    df = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
+    df["Alert Date"] = pd.to_datetime(df["Alert Date"])
+    st.session_state["df"] = df
+
+# 若已更新，顯示新結果
+if "df" in st.session_state:
+    st.markdown("### 📬 最新比對結果")
+    st.dataframe(st.session_state["df"], use_container_width=True)

@@ -10,17 +10,14 @@ def fuzzy_match(a, b):
 
 def compute_match_score(fda, tfda):
     score = 0.0
-    # 主成分比對
     if fda["ingredient"] == tfda["ingredient"]:
         score += 0.6
     elif fda["ingredient"].split()[0] == tfda["ingredient"].split()[0]:
         score += 0.5
-    # 劑型與規格比對
     if fda["form"] == tfda["form"]:
         score += 0.3
     elif fda["form"].split()[0] == tfda["form"].split()[0]:
         score += 0.2
-    # 品名模糊比對
     sim = fuzzy_match(fda["us_product"], tfda["tw_product"])
     if sim >= 0.85:
         score += 0.1
@@ -73,7 +70,26 @@ def match_fda_to_tfda(fda_list, tfda_list):
     return results
 
 # -------------------------
-# 模擬資料
+# TFDA 許可證匯入模組
+# -------------------------
+def load_tfda_file(file):
+    try:
+        if file.name.endswith(".csv"):
+            df_tfda = pd.read_csv(file)
+        else:
+            df_tfda = pd.read_excel(file)
+        required_cols = ["tw_product", "ingredient", "form", "license_id", "tw_link"]
+        if not all(col in df_tfda.columns for col in required_cols):
+            st.error("欄位缺漏，請確認包含：tw_product, ingredient, form, license_id, tw_link")
+            return []
+        tfda_list = df_tfda[required_cols].to_dict(orient="records")
+        return tfda_list
+    except Exception as e:
+        st.error(f"讀取失敗：{e}")
+        return []
+
+# -------------------------
+# FDA 藥品清單（模擬）
 # -------------------------
 fda_list = [
     {
@@ -108,34 +124,37 @@ fda_list = [
     }
 ]
 
-tfda_list = [
-    {
-        "tw_product": "樂意保",
-        "ingredient": "lecanemab",
-        "form": "100 mg/mL 注射液",
-        "license_id": "MOHW-BI-001273",
-        "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
-    },
-    {
-        "tw_product": "骨松益",
-        "ingredient": "denosumab",
-        "form": "60 mg/1 mL 注射液",
-        "license_id": "衛部藥製字第XXXX號",
-        "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
-    }
-]
-
-# -------------------------
-# 建立 DataFrame
-# -------------------------
-df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
-df["Alert Date"] = pd.to_datetime(df["Alert Date"])
-
 # -------------------------
 # Streamlit UI
 # -------------------------
 st.set_page_config(page_title="藥品安全警示比對平台", layout="wide")
 st.title("藥品安全警示比對平台")
+
+# 上傳 TFDA 許可證清單
+uploaded_file = st.sidebar.file_uploader("上傳 TFDA 許可證清單（CSV 或 Excel）", type=["csv", "xlsx"])
+if uploaded_file:
+    tfda_list = load_tfda_file(uploaded_file)
+else:
+    tfda_list = [
+        {
+            "tw_product": "樂意保",
+            "ingredient": "lecanemab",
+            "form": "100 mg/mL 注射液",
+            "license_id": "MOHW-BI-001273",
+            "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
+        },
+        {
+            "tw_product": "骨松益",
+            "ingredient": "denosumab",
+            "form": "60 mg/1 mL 注射液",
+            "license_id": "衛部藥製字第XXXX號",
+            "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
+        }
+    ]
+
+# 建立 DataFrame
+df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
+df["Alert Date"] = pd.to_datetime(df["Alert Date"])
 
 # KPI 卡片
 col1, col2, col3, col4 = st.columns(4)
@@ -173,28 +192,5 @@ if keyword.strip():
         axis=1
     )]
 
-# 主表格
+# 主表格與詳情展開
 st.subheader("警示列表（已套用篩選）")
-if df_filtered.empty:
-    st.info("目前篩選條件下沒有資料。請調整日期或關鍵字。")
-else:
-    display_cols = [
-        "Alert Date", "Source", "US Product", "Ingredient",
-        "Risk Summary", "Action Summary", "TW Match Status",
-        "TW Product", "License ID", "Strength/Form", "Match Confidence"
-    ]
-    st.dataframe(df_filtered[display_cols], use_container_width=True, hide_index=True)
-
-    # 詳情展開
-for idx, row in df_filtered.iterrows():
-    with st.expander(f"詳情｜{row['Alert Date'].date()}｜{row['US Product']}｜{row['Ingredient']}"):
-        st.markdown(f"- **風險摘要：** {row['Risk Summary']}")
-        st.markdown(f"- **建議行動：** {row['Action Summary']}")
-        st.markdown(f"- **FDA 原文片段：** {row['FDA Excerpt']}")
-        st.markdown(f"- **來源連結：** [FDA 安全通訊](https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications)")
-        if row["TW Product"]:
-            st.markdown(f"- **台灣許可證：** [{row['TW Product']}（{row['License ID']}）]({row['TW Link']})")
-        else:
-            st.markdown("- **台灣許可證：** 無同成分或尚未核准")
-        st.markdown(f"- **劑型/規格：** {row['Strength/Form'] or '—'}")
-        st.markdown(f"- **配對信度：** {row['Match Confidence']:.1f}")

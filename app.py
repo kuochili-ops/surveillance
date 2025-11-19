@@ -10,14 +10,17 @@ def fuzzy_match(a, b):
 
 def compute_match_score(fda, tfda):
     score = 0.0
+    # 主成分比對
     if fda["ingredient"] == tfda["ingredient"]:
         score += 0.6
     elif fda["ingredient"].split()[0] == tfda["ingredient"].split()[0]:
         score += 0.5
+    # 劑型與規格比對
     if fda["form"] == tfda["form"]:
         score += 0.3
     elif fda["form"].split()[0] == tfda["form"].split()[0]:
         score += 0.2
+    # 品名模糊比對
     sim = fuzzy_match(fda["us_product"], tfda["tw_product"])
     if sim >= 0.85:
         score += 0.1
@@ -48,8 +51,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "License ID": best_match["license_id"],
                 "Strength/Form": best_match["form"],
                 "Match Confidence": best_score,
-                "FDA Excerpt": fda["fda_excerpt"],
-                "TW Link": best_match["tw_link"]
+                "FDA Excerpt": fda["fda_excerpt"]
             })
         else:
             results.append({
@@ -64,8 +66,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "License ID": "",
                 "Strength/Form": "",
                 "Match Confidence": 0.0,
-                "FDA Excerpt": fda["fda_excerpt"],
-                "TW Link": ""
+                "FDA Excerpt": fda["fda_excerpt"]
             })
     return results
 
@@ -78,9 +79,9 @@ def load_tfda_file(file):
             df_tfda = pd.read_csv(file)
         else:
             df_tfda = pd.read_excel(file)
-        required_cols = ["tw_product", "ingredient", "form", "license_id", "tw_link"]
+        required_cols = ["tw_product", "ingredient", "form", "license_id"]
         if not all(col in df_tfda.columns for col in required_cols):
-            st.error("欄位缺漏，請確認包含：tw_product, ingredient, form, license_id, tw_link")
+            st.error("欄位缺漏，請確認包含：tw_product, ingredient, form, license_id")
             return []
         tfda_list = df_tfda[required_cols].to_dict(orient="records")
         return tfda_list
@@ -136,20 +137,8 @@ if uploaded_file:
     tfda_list = load_tfda_file(uploaded_file)
 else:
     tfda_list = [
-        {
-            "tw_product": "樂意保",
-            "ingredient": "lecanemab",
-            "form": "100 mg/mL 注射液",
-            "license_id": "MOHW-BI-001273",
-            "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
-        },
-        {
-            "tw_product": "骨松益",
-            "ingredient": "denosumab",
-            "form": "60 mg/1 mL 注射液",
-            "license_id": "衛部藥製字第XXXX號",
-            "tw_link": "https://lmspiq.fda.gov.tw/web/DRPIQ/DRPIQLicSearch"
-        }
+        {"tw_product": "樂意保", "ingredient": "lecanemab", "form": "100 mg/mL 注射液", "license_id": "MOHW-BI-001273"},
+        {"tw_product": "骨松益", "ingredient": "denosumab", "form": "60 mg/1 mL 注射液", "license_id": "衛部藥製字第XXXX號"}
     ]
 
 # 建立 DataFrame
@@ -194,3 +183,8 @@ if keyword.strip():
 
 # 主表格與詳情展開
 st.subheader("警示列表（已套用篩選）")
+if df_filtered.empty:
+    st.info("目前篩選條件下沒有資料。請調整日期或關鍵字。")
+else:
+    display_cols = [
+        "Alert Date", "Source", "US

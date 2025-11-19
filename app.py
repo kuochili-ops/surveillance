@@ -189,4 +189,7 @@ else:
     for idx, row in df_filtered.iterrows():
         with st.expander(f"詳情｜{row['Alert Date'].date()}｜{row['US Product']}｜{row['Ingredient']}"):
             st.markdown(f"- **風險摘要：** {row['Risk Summary']}")
-            st.markdown(f"- **建議
+            st.markdown(f"- **建議行動：** {row['Action Summary']}")
+            st.markdown(f"- **FDA 原文片段：** {row['FDA Excerpt']}")
+            st.markdown(f"- **來源連結：** [FDA 安全通訊](https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications)")
+            if row["TW

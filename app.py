@@ -186,10 +186,15 @@ else:
     st.dataframe(df_filtered[display_cols], use_container_width=True, hide_index=True)
 
     # 詳情展開
-    for idx, row in df_filtered.iterrows():
-        with st.expander(f"詳情｜{row['Alert Date'].date()}｜{row['US Product']}｜{row['Ingredient']}"):
-            st.markdown(f"- **風險摘要：** {row['Risk Summary']}")
-            st.markdown(f"- **建議行動：** {row['Action Summary']}")
-            st.markdown(f"- **FDA 原文片段：** {row['FDA Excerpt']}")
-            st.markdown(f"- **來源連結：** [FDA 安全通訊](https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications)")
-            if row["TW
+for idx, row in df_filtered.iterrows():
+    with st.expander(f"詳情｜{row['Alert Date'].date()}｜{row['US Product']}｜{row['Ingredient']}"):
+        st.markdown(f"- **風險摘要：** {row['Risk Summary']}")
+        st.markdown(f"- **建議行動：** {row['Action Summary']}")
+        st.markdown(f"- **FDA 原文片段：** {row['FDA Excerpt']}")
+        st.markdown(f"- **來源連結：** [FDA 安全通訊](https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications)")
+        if row["TW Product"]:
+            st.markdown(f"- **台灣許可證：** [{row['TW Product']}（{row['License ID']}）]({row['TW Link']})")
+        else:
+            st.markdown("- **台灣許可證：** 無同成分或尚未核准")
+        st.markdown(f"- **劑型/規格：** {row['Strength/Form'] or '—'}")
+        st.markdown(f"- **配對信度：** {row['Match Confidence']:.1f}")

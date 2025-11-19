@@ -3,10 +3,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
+import os
 
-# -------------------------
-# 配對模組
-# -------------------------
 def fuzzy_match(a, b):
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
@@ -81,7 +79,6 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "FDA Excerpt": fda["fda_excerpt"]
             })
     return results
-
 # -------------------------
 # TFDA 許可證匯入模組
 # -------------------------
@@ -135,6 +132,27 @@ def parse_dsc_to_fda_list(alerts):
         })
     return parsed
 
+# -------------------------
+# 網頁監視模組
+# -------------------------
+def load_last_seen():
+    if os.path.exists("last_seen_alerts.json"):
+        try:
+            return pd.read_json("last_seen_alerts.json")["title"].tolist()
+        except:
+            return []
+    return []
+
+def save_last_seen(alerts):
+    titles = [a["title"] for a in alerts]
+    pd.DataFrame({"title": titles}).to_json("last_seen_alerts.json")
+
+def get_new_alerts():
+    latest = fetch_fda_dsc_alerts()
+    seen = load_last_seen()
+    new_alerts = [a for a in latest if a["title"] not in seen]
+    save_last_seen(latest)
+    return new_alerts
 # -------------------------
 # 預設 FDA 藥品清單（2025）
 # -------------------------
@@ -206,9 +224,38 @@ st.markdown("---")
 st.sidebar.header("篩選器")
 min_date = df["Alert Date"].min().date()
 max_date = df["Alert Date"].max().date()
-date_range = st.sidebar.date_input(
-    "警示日期範圍",
-    value=(min_date, max_date),
-    min_value=min_date,
-    max_value=max_date
-)
+date_range = st.sidebar.date_input("警示日期範圍", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+source_options = df["Source"].unique().tolist()
+selected_sources = st.sidebar.multiselect("來源類型", options=source_options, default=source_options)
+keyword = st.sidebar.text_input("關鍵字搜尋（品名 / 成分 / 摘要）", value="")
+
+start_date, end_date = date_range if isinstance(date_range, tuple) else (min_date, max_date)
+df_filtered = df[
+    (df["Alert Date"] >= pd.to_datetime(start_date)) &
+    (df["Alert Date"] <= pd.to_datetime(end_date)) &
+    (df["Source"].isin(selected_sources))
+]
+if keyword.strip():
+    kw = keyword.strip().lower()
+    df_filtered = df_filtered[df_filtered.apply(lambda row: kw in str(row).lower(), axis=1)]
+# 主表格顯示
+st.markdown("### 📋 配對結果一覽")
+st.dataframe(df_filtered, use_container_width=True)
+
+# 詳情展開
+with st.expander("📦 展開每筆警示詳情"):
+    for _, row in df_filtered.iterrows():
+        st.markdown(f"**🧪 {row['US Product']}**（{row['Ingredient']}）")
+        st.markdown(f"- 警示日期：{row['Alert Date'].date()}｜來源：{row['Source']}")
+        st.markdown(f"- 台灣配對：{row['TW Match Status']} → `{row['TW Product']}`")
+        st.markdown(f"- 摘要：{row['Risk Summary']}")
+        st.markdown(f"- 建議：{row['Action Summary']}")
+        st.markdown(f"- 詳情：{row['FDA Excerpt']}")
+        st.markdown("---")
+
+# FDA 官網爬蟲按鈕
+st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
+if st.button("立即更新"):
+    latest_alerts = fetch_fda_dsc_alerts()
+    fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
+    df = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))

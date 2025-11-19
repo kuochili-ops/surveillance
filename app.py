@@ -198,7 +198,18 @@ except Exception as e:
     tfda_list = []
 
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
-df["Alert Date"] = pd.to_datetime(df["Alert Date"])
+
+# 防呆：空資料
+if df.empty:
+    st.warning("⚠️ 沒有配對結果，請確認 TFDA 資料與 FDA 清單格式。")
+    st.stop()
+
+# 防呆：欄位缺失
+if "Alert Date" in df.columns:
+    df["Alert Date"] = pd.to_datetime(df["Alert Date"])
+else:
+    st.warning("⚠️ 欄位 'Alert Date' 不存在，無法轉換日期格式。")
+    st.stop()
 
 # KPI 卡片
 col1, col2, col3, col4 = st.columns(4)

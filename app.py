@@ -5,16 +5,36 @@ from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 import os
 
+# -------------------------
+# 標準化處理
+# -------------------------
+def normalize_text(text):
+    if not text:
+        return ""
+    return (
+        str(text).lower()
+        .replace(" ", "")
+        .replace("劑", "")
+        .replace("注射液劑", "注射液")
+        .replace("毫克", "mg")
+        .replace("毫升", "ml")
+    )
+
+# -------------------------
+# 配對模組
+# -------------------------
 def fuzzy_match(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    return SequenceMatcher(None, a, b).ratio()
 
 def compute_match_score(fda, tfda):
-    score = 0.0
-    fda_ing = str(fda.get("ingredient", "")).strip()
-    tfda_ing = str(tfda.get("ingredient", "")).strip()
-    fda_form = str(fda.get("form", "")).strip()
-    tfda_form = str(tfda.get("form", "")).strip()
+    fda_ing = normalize_text(fda.get("ingredient", ""))
+    tfda_ing = normalize_text(tfda.get("ingredient", ""))
+    fda_form = normalize_text(fda.get("form", ""))
+    tfda_form = normalize_text(tfda.get("form", ""))
+    fda_prod = normalize_text(fda.get("us_product", ""))
+    tfda_prod = normalize_text(tfda.get("tw_product", ""))
 
+    score = 0.0
     if fda_ing and tfda_ing:
         if fda_ing == tfda_ing:
             score += 0.6
@@ -27,8 +47,6 @@ def compute_match_score(fda, tfda):
         elif fda_form.split()[0] == tfda_form.split()[0]:
             score += 0.2
 
-    fda_prod = str(fda.get("us_product", "")).strip()
-    tfda_prod = str(tfda.get("tw_product", "")).strip()
     if fda_prod and tfda_prod:
         sim = fuzzy_match(fda_prod, tfda_prod)
         if sim >= 0.85:
@@ -79,26 +97,9 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "FDA Excerpt": fda["fda_excerpt"]
             })
     return results
-# -------------------------
-# TFDA 許可證匯入模組
-# -------------------------
-def load_tfda_file(file):
-    try:
-        if file.name.endswith(".csv"):
-            df_tfda = pd.read_csv(file)
-        else:
-            df_tfda = pd.read_excel(file)
-        required_cols = ["tw_product", "ingredient", "form", "license_id"]
-        if not all(col in df_tfda.columns for col in required_cols):
-            st.error("欄位缺漏，請確認包含：tw_product, ingredient, form, license_id")
-            return []
-        return df_tfda[required_cols].to_dict(orient="records")
-    except Exception as e:
-        st.error(f"讀取失敗：{e}")
-        return []
 
 # -------------------------
-# FDA 官網爬蟲模組
+# FDA 官網爬蟲 + 新警示監視
 # -------------------------
 def fetch_fda_dsc_alerts():
     url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
@@ -132,9 +133,6 @@ def parse_dsc_to_fda_list(alerts):
         })
     return parsed
 
-# -------------------------
-# 網頁監視模組
-# -------------------------
 def load_last_seen():
     if os.path.exists("last_seen_alerts.json"):
         try:
@@ -153,8 +151,9 @@ def get_new_alerts():
     new_alerts = [a for a in latest if a["title"] not in seen]
     save_last_seen(latest)
     return new_alerts
+
 # -------------------------
-# 預設 FDA 藥品清單（2025）
+# 預設 FDA 藥品清單
 # -------------------------
 fda_list = [
     {
@@ -176,16 +175,6 @@ fda_list = [
         "risk_summary": "嚴重低血鈣：洗腎病人風險增加",
         "action_summary": "建議監測血鈣",
         "fda_excerpt": "Risk of severe hypocalcemia in dialysis patients receiving denosumab."
-    },
-    {
-        "alert_date": "2025-09-30",
-        "source": "DSC",
-        "us_product": "Ocaliva",
-        "ingredient": "obeticholic acid",
-        "form": "5 mg 錠劑",
-        "risk_summary": "原發性膽汁性肝硬化：晚期肝病病人風險增加",
-        "action_summary": "建議調整劑量",
-        "fda_excerpt": "Serious liver injury reported in non-cirrhotic PBC patients treated with obeticholic acid."
     }
 ]
 
@@ -195,6 +184,7 @@ fda_list = [
 st.set_page_config(page_title="藥品安全警示比對平台", layout="wide")
 st.title("藥品安全警示比對平台")
 
+# 直接讀取同目錄下的 37_2b.csv
 try:
     df_tfda = pd.read_csv("37_2b.csv")
     required_cols = ["tw_product", "ingredient", "form", "license_id"]
@@ -206,7 +196,6 @@ try:
 except Exception as e:
     st.error(f"讀取 37_2b.csv 失敗：{e}")
     tfda_list = []
-
 
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 df["Alert Date"] = pd.to_datetime(df["Alert Date"])
@@ -225,41 +214,4 @@ with col4:
 st.markdown("---")
 
 # 篩選器
-st.sidebar.header("篩選器")
-min_date = df["Alert Date"].min().date()
-max_date = df["Alert Date"].max().date()
-date_range = st.sidebar.date_input("警示日期範圍", value=(min_date, max_date), min_value=min_date, max_value=max_date)
-source_options = df["Source"].unique().tolist()
-selected_sources = st.sidebar.multiselect("來源類型", options=source_options, default=source_options)
-keyword = st.sidebar.text_input("關鍵字搜尋（品名 / 成分 / 摘要）", value="")
-
-start_date, end_date = date_range if isinstance(date_range, tuple) else (min_date, max_date)
-df_filtered = df[
-    (df["Alert Date"] >= pd.to_datetime(start_date)) &
-    (df["Alert Date"] <= pd.to_datetime(end_date)) &
-    (df["Source"].isin(selected_sources))
-]
-if keyword.strip():
-    kw = keyword.strip().lower()
-    df_filtered = df_filtered[df_filtered.apply(lambda row: kw in str(row).lower(), axis=1)]
-# 主表格顯示
-st.markdown("### 📋 配對結果一覽")
-st.dataframe(df_filtered, use_container_width=True)
-
-# 詳情展開
-with st.expander("📦 展開每筆警示詳情"):
-    for _, row in df_filtered.iterrows():
-        st.markdown(f"**🧪 {row['US Product']}**（{row['Ingredient']}）")
-        st.markdown(f"- 警示日期：{row['Alert Date'].date()}｜來源：{row['Source']}")
-        st.markdown(f"- 台灣配對：{row['TW Match Status']} → `{row['TW Product']}`")
-        st.markdown(f"- 摘要：{row['Risk Summary']}")
-        st.markdown(f"- 建議：{row['Action Summary']}")
-        st.markdown(f"- 詳情：{row['FDA Excerpt']}")
-        st.markdown("---")
-
-# FDA 官網爬蟲按鈕
-st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
-if st.button("立即更新"):
-    latest_alerts = fetch_fda_dsc_alerts()
-    fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
-    df = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
+st.sidebar.header("篩

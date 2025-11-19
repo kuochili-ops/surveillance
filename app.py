@@ -157,4 +157,5 @@ else:
 
 # 建立 DataFrame
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
-df["Alert Date"] =
+df["Alert Date"] = pd.to_datetime(df["Alert Date"])
+

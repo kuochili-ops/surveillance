@@ -104,11 +104,11 @@ def load_tfda_file(file):
         return []
 
 # -------------------------
-# FDA 藥品清單（模擬）
+# FDA 藥品清單（更新到 2025）
 # -------------------------
 fda_list = [
     {
-        "alert_date": "2023-04-28",
+        "alert_date": "2025-11-01",
         "source": "DSC",
         "us_product": "Leqembi",
         "ingredient": "lecanemab",
@@ -118,7 +118,7 @@ fda_list = [
         "fda_excerpt": "FDA recommends MRI monitoring to reduce ARIA risk, especially in APOE ε4 carriers."
     },
     {
-        "alert_date": "2023-04-05",
+        "alert_date": "2025-10-15",
         "source": "DSC",
         "us_product": "Prolia",
         "ingredient": "denosumab",
@@ -128,7 +128,7 @@ fda_list = [
         "fda_excerpt": "Risk of severe hypocalcemia in dialysis patients receiving denosumab."
     },
     {
-        "alert_date": "2023-03-21",
+        "alert_date": "2025-09-30",
         "source": "DSC",
         "us_product": "Ocaliva",
         "ingredient": "obeticholic acid",
@@ -157,42 +157,4 @@ else:
 
 # 建立 DataFrame
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
-df["Alert Date"] = pd.to_datetime(df["Alert Date"])
-
-# KPI 卡片
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric(label="本期警示數", value=len(df))
-with col2:
-    st.metric(label="新增黑框警語數", value=1)
-with col3:
-    st.metric(label="台灣有配對藥品數", value=(df["TW Match Status"] != "無配對").sum())
-with col4:
-    st.metric(label="需人工覆核數", value=(df["Match Confidence"] < 0.7).sum())
-
-st.markdown("---")
-
-# 篩選器
-st.sidebar.header("篩選器")
-min_date = df["Alert Date"].min().date()
-max_date = df["Alert Date"].max().date()
-date_range = st.sidebar.date_input("警示日期範圍", value=(min_date, max_date), min_value=min_date, max_value=max_date)
-source_options = df["Source"].unique().tolist()
-selected_sources = st.sidebar.multiselect("來源類型", options=source_options, default=source_options)
-keyword = st.sidebar.text_input("關鍵字搜尋（品名 / 成分 / 摘要）", value="")
-
-# 套用篩選
-start_date, end_date = date_range if isinstance(date_range, tuple) else (min_date, max_date)
-df_filtered = df[
-    (df["Alert Date"] >= pd.to_datetime(start_date)) &
-    (df["Alert Date"] <= pd.to_datetime(end_date)) &
-    (df["Source"].isin(selected_sources))
-]
-if keyword.strip():
-    kw = keyword.strip().lower()
-    df_filtered = df_filtered[df_filtered.apply(
-        lambda row: any(kw in str(row[col]).lower() for col in ["US Product", "Ingredient", "Risk Summary", "Action Summary"]),
-        axis=1
-    )]
-
-# 主表格與詳情
+df["Alert Date"] =

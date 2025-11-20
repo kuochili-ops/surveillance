@@ -13,8 +13,6 @@ st.title("藥品警訊系統")
 
 # 載入 TFDA 資料
 tfda_list = load_tfda_data()
-
-# 顯示 TFDA 載入狀態
 if tfda_list:
     st.success(f"✅ 已載入 TFDA 許可資訊資料，共 {len(tfda_list)} 筆")
 else:
@@ -36,27 +34,25 @@ with st.sidebar:
         index=0
     )
 
-# 根據選項決定篩選範圍
-today = datetime.today()
-if date_range_option == "近三個月":
-    start_date = today - timedelta(days=90)
-elif date_range_option == "近一年":
-    start_date = today - timedelta(days=365)
-else:
-    start_date = None  # 全部警示
-
-# 篩選資料
+# 日期轉換與篩選
 if "Alert Date" in df.columns:
     df["Alert Date"] = pd.to_datetime(df["Alert Date"], errors="coerce")
-    if start_date:
+    today = datetime.today()
+
+    if date_range_option == "近三個月":
+        start_date = today - timedelta(days=90)
         df = df[df["Alert Date"] >= start_date]
+    elif date_range_option == "近一年":
+        start_date = today - timedelta(days=365)
+        df = df[df["Alert Date"] >= start_date]
+    # 全部警示 → 不篩選
 
 # 篩選診斷區塊
 with st.expander("📊 篩選診斷"):
-    st.write("原始筆數：", len(df))
+    st.write("原始筆數（含 NaT）：", len(df))
     st.write("最早日期：", df["Alert Date"].min())
     st.write("最晚日期：", df["Alert Date"].max())
-    st.write("無效日期筆數：", df["Alert Date"].isna().sum())
+    st.write("無效日期筆數（NaT）：", df["Alert Date"].isna().sum())
 
 # 顯示結果
 if not df.empty:

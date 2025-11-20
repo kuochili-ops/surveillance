@@ -123,4 +123,5 @@ with st.expander("🧪 FDA 成分比對診斷"):
 # Sidebar 註記
 with st.sidebar:
     st.caption("📘 DSC（Drug Safety Communication）是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")
-    st.caption(f"📅 系統
+    st.caption(f"📅 系統目前顯示「{date_range_option}」內的 FDA 藥品警示")
+

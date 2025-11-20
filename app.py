@@ -6,6 +6,16 @@ from components.kpi_cards import render_kpi
 from components.filters import apply_filters
 from components.result_table import render_table, render_details
 from components.fda_buttons import render_fda_buttons
+from datetime import datetime, timedelta
+
+# 設定近三個月的範圍
+today = datetime.today()
+three_months_ago = today - timedelta(days=90)
+
+# 篩選警示日期，只保留近三個月
+if "Alert Date" in df.columns:
+    df["Alert Date"] = pd.to_datetime(df["Alert Date"], errors="coerce")
+    df = df[df["Alert Date"] >= three_months_ago]
 
 # 預設 FDA 清單（可移至 crawler.py 作為 fallback）
 from utils.fallback_data import fda_list
@@ -48,4 +58,5 @@ render_fda_buttons(tfda_list)
 # Sidebar 註記
 with st.sidebar:
     st.markdown("---")
+    st.sidebar.caption("📅 目前僅顯示近三個月內的 FDA 警示")
     st.caption("📘 **DSC（Drug Safety Communication）** 是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")

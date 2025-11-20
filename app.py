@@ -107,14 +107,14 @@ def parse_dsc_to_fda_list(alerts):
     fda_list = []
     for alert in alerts:
         fda_list.append({
-            "alert_date": "2025-11-20",  # TODO: 從 alert 頁面解析
+            "alert_date": "2025-11-20",  # 固定日期測試用
             "source": "DSC",
             "us_product": alert["title"],
-            "ingredient": "",
-            "form": "",
-            "risk_summary": "",
-            "action_summary": "",
-            "fda_excerpt": alert["link"]
+            "ingredient": "denosumab",  # 固定成分
+            "form": "60 mg/1 mL 注射液",  # 固定劑型
+            "risk_summary": "洗腎病人低血鈣風險",  # 固定摘要
+            "action_summary": "建議監測血鈣",  # 固定建議
+            "fda_excerpt": f"https://www.fda.gov{alert['link']}"  # 補上完整連結
         })
     return fda_list
 

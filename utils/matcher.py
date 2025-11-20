@@ -55,7 +55,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "Action Summary": fda["action_summary"],
                 "TW Match Status": "同主成分" if best_score >= 0.85 else "中信度配對",
                 "TW Product": best_match.get("product_name", ""),
-                "License ID": best_match["license_id"],
+                "License ID": best_match.get("license_no", ""),
                 "Strength/Form": best_match["form"],
                 "Match Confidence": best_score,
                 "FDA Excerpt": fda["fda_excerpt"]

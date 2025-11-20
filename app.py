@@ -44,3 +44,8 @@ render_details(df_filtered)
 
 # FDA 官網互動按鈕
 render_fda_buttons(tfda_list)
+
+# Sidebar 註記
+with st.sidebar:
+    st.markdown("---")
+    st.caption("📘 **DSC（Drug Safety Communication）** 是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")

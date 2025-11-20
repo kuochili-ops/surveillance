@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 # 載入自製模組
 from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list
 from utils.matcher import match_fda_to_tfda
-from utils.tfda_loader import load_tfda_data  # 假設你有這個函式
+from utils.tfda_loader import load_tfda_data 
 
 st.set_page_config(page_title="藥品警訊", layout="wide")
 

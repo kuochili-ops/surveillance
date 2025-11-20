@@ -1,12 +1,21 @@
 import streamlit as st
-from utils.crawler import fetch_fda_dsc_alerts
+import requests
+from bs4 import BeautifulSoup
 
-st.title("FDA 官網爬蟲診斷工具")
+url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
+headers = {"User-Agent": "Mozilla/5.0"}
+response = requests.get(url, headers=headers, timeout=10)
 
-alerts = fetch_fda_dsc_alerts()
-st.write(f"📦 共抓到 {len(alerts)} 筆 FDA DSC 警訊")
+if response.status_code == 200:
+    st.success("✅ FDA 官網連線成功")
+    soup = BeautifulSoup(response.text, "html.parser")
+    section = soup.find("div", class_="view-content")
 
-if alerts:
-    st.table(alerts[:10])
+    if section:
+        st.success("✅ 成功找到 view-content 區塊")
+        st.code(str(section)[:3000], language="html")  # 顯示前 3000 字元
+    else:
+        st.error("❌ 找不到 view-content 區塊，可能 FDA 官網結構已變")
+        st.code(response.text[:3000], language="html")
 else:
-    st.error("❌ 沒有抓到任何警訊，可能啟用了 fallback 或爬蟲失敗")
+    st.error(f"❌ FDA 官網連線失敗，狀態碼：{response.status_code}")

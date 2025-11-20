@@ -24,6 +24,17 @@ def parse_dsc_to_fda_list(alerts):
             "fda_excerpt": alert.get("title", "")
         })
     return results
+with st.expander("🧪 FDA 成分比對診斷"):
+    unmatched = []
+    for fda in fda_list:
+        fda_ing = fda.get("ingredient", "").lower()
+        if fda_ing and not any(tfda.get("ingredient", "").lower() == fda_ing for tfda in tfda_list):
+            unmatched.append(fda_ing)
+    if unmatched:
+        st.warning(f"共有 {len(unmatched)} 筆 FDA 成分無法比對 TFDA：")
+        st.write(sorted(set(unmatched)))
+    else:
+        st.success("✅ 所有 FDA 成分皆成功比對 TFDA")
 
 
 # 自製模組

@@ -3,13 +3,14 @@ import pandas as pd
 from datetime import datetime, timedelta
 import re
 
+# 成分抽取工具
 def extract_product_and_ingredient(title):
-    # 嘗試從標題中擷取 "Leqembi (lecanemab)" 結構
     match = re.search(r"([A-Za-z0-9\-]+)\s*\(([^)]+)\)", title)
     if match:
         return match.group(1), match.group(2)
     return "", ""
 
+# FDA 警訊解析
 def parse_dsc_to_fda_list(alerts):
     results = []
     for alert in alerts:
@@ -24,21 +25,9 @@ def parse_dsc_to_fda_list(alerts):
             "fda_excerpt": alert.get("title", "")
         })
     return results
-with st.expander("🧪 FDA 成分比對診斷"):
-    unmatched = []
-    for fda in fda_list:
-        fda_ing = fda.get("ingredient", "").lower()
-        if fda_ing and not any(tfda.get("ingredient", "").lower() == fda_ing for tfda in tfda_list):
-            unmatched.append(fda_ing)
-    if unmatched:
-        st.warning(f"共有 {len(unmatched)} 筆 FDA 成分無法比對 TFDA：")
-        st.write(sorted(set(unmatched)))
-    else:
-        st.success("✅ 所有 FDA 成分皆成功比對 TFDA")
-
 
 # 自製模組
-from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list, fetch_fda_dsc_current
+from utils.crawler import fetch_fda_dsc_alerts, fetch_fda_dsc_current
 from utils.matcher import match_fda_to_tfda
 from utils.tfda_loader import load_tfda_data
 
@@ -57,11 +46,14 @@ else:
 alerts = fetch_fda_dsc_alerts()
 fda_list = parse_dsc_to_fda_list(alerts)
 
+if not fda_list:
+    st.error("⚠️ 無法取得 FDA 藥品警訊資料，請檢查 crawler.py 或網路連線")
+    st.stop()
+
 # 建立比對結果 DataFrame（保證欄位完整）
-st.write("fda_list 原始資料：", fda_list)
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 
-# Sidebar：切換警示範圍（移除「全部警示」）
+# Sidebar：切換警示範圍
 with st.sidebar:
     st.markdown("---")
     date_range_option = st.radio(
@@ -109,12 +101,28 @@ if not df.empty:
 else:
     st.info("目前沒有符合條件的 FDA 藥品警示。")
 
+# 🔍 FDA 成分比對診斷區塊
+with st.expander("🧪 FDA 成分比對診斷"):
+    unmatched = []
+    for fda in fda_list:
+        fda_ing = fda.get("ingredient", "").lower()
+        if fda_ing and not any(tfda.get("ingredient", "").lower() == fda_ing for tfda in tfda_list):
+            unmatched.append(fda_ing)
+    if unmatched:
+        st.warning(f"共有 {len(unmatched)} 筆 FDA 成分無法比對 TFDA：")
+        st.write(sorted(set(unmatched)))
+    else:
+        st.success("✅ 所有 FDA 成分皆成功比對 TFDA")
+
 # 顯示 FDA 官網目前 DSC 警訊（簡易表格）
 with st.expander("📢 FDA 官網目前 DSC 藥品警訊"):
     current_alerts = fetch_fda_dsc_current()
     st.write("current_alerts 原始資料：", current_alerts)
     st.write(f"共 {len(current_alerts)} 筆")
-    st.table(current_alerts)
+    if current_alerts:
+        st.table(current_alerts)
+    else:
+        st.error("⚠️ FDA 官網 DSC 警訊目前無法載入或解析")
 
 # Sidebar 註記
 with st.sidebar:

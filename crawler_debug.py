@@ -1,9 +1,12 @@
+import streamlit as st
 from utils.crawler import fetch_fda_dsc_alerts
-from pprint import pprint
+
+st.title("FDA 官網爬蟲診斷工具")
 
 alerts = fetch_fda_dsc_alerts()
+st.write(f"📦 共抓到 {len(alerts)} 筆 FDA DSC 警訊")
 
-print(f"\n📦 共抓到 {len(alerts)} 筆 FDA DSC 警訊\n")
-for i, alert in enumerate(alerts[:5], 1):  # 顯示前 5 筆
-    print(f"🔔 第 {i} 筆")
-    pprint(alert)
+if alerts:
+    st.table(alerts[:10])
+else:
+    st.error("❌ 沒有抓到任何警訊，可能啟用了 fallback 或爬蟲失敗")

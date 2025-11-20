@@ -10,12 +10,14 @@ def extract_product_and_ingredient(title):
         return match.group(1), match.group(2)
     return "", ""
 
+# 匯入自製模組
 try:
     from utils.crawler import fetch_fda_dsc_alerts, fetch_fda_dsc_current
+    from utils.matcher import match_fda_to_tfda
+    from utils.tfda_loader import load_tfda_data
 except ImportError as e:
-    st.error(f"❌ 無法匯入 crawler 模組：{e}")
+    st.error(f"❌ 無法匯入模組：{e}")
     st.stop()
-
 
 # FDA 警訊解析
 def parse_dsc_to_fda_list(alerts):
@@ -23,7 +25,7 @@ def parse_dsc_to_fda_list(alerts):
     for alert in alerts:
         product, ingredient = extract_product_and_ingredient(alert.get("title", ""))
         results.append({
-            "alert_date": alert.get("alert_date", ""),
+            "alert_date": alert.get("alert_date", None),  # ⚠️ 如果沒有日期就用 None
             "source": alert.get("source", "FDA"),
             "us_product": product,
             "ingredient": ingredient,
@@ -32,11 +34,6 @@ def parse_dsc_to_fda_list(alerts):
             "fda_excerpt": alert.get("title", "")
         })
     return results
-
-# 自製模組
-from utils.crawler import fetch_fda_dsc_alerts, fetch_fda_dsc_current
-from utils.matcher import match_fda_to_tfda
-from utils.tfda_loader import load_tfda_data
 
 # 頁面設定
 st.set_page_config(page_title="藥品警訊系統", layout="wide")
@@ -59,17 +56,13 @@ if not fda_list:
 
 # 建立比對結果 DataFrame
 df_raw = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
-df_raw["Alert Date"] = pd.to_datetime(df_raw["Alert Date"], errors="coerce")  # 統一轉換
+df_raw["Alert Date"] = pd.to_datetime(df_raw["Alert Date"], errors="coerce")
 df = df_raw.copy()
 
 # Sidebar：切換警示範圍
 with st.sidebar:
     st.markdown("---")
-    date_range_option = st.radio(
-        "📅 警示日期範圍",
-        ("近三個月", "近一年"),
-        index=0
-    )
+    date_range_option = st.radio("📅 警示日期範圍", ("近三個月", "近一年"), index=0)
 
 # 日期篩選
 today = datetime.today()
@@ -78,7 +71,7 @@ if date_range_option == "近三個月":
 elif date_range_option == "近一年":
     start_date = today - timedelta(days=365)
 
-df = df[df["Alert Date"] >= start_date]
+df = df[df["Alert Date"].notna() & (df["Alert Date"] >= start_date)]
 
 # 主頁面：關鍵字搜尋
 keyword = st.text_input("🔍 關鍵字搜尋（產品名 / 成分 / 風險摘要）")

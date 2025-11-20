@@ -7,6 +7,7 @@ from components.filters import apply_filters
 from components.result_table import render_table, render_details
 from components.fda_buttons import render_fda_buttons
 from datetime import datetime, timedelta
+from utils.fallback_data import fda_list
 
 # 設定近三個月的範圍
 today = datetime.today()

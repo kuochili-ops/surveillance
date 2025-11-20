@@ -46,6 +46,7 @@ else:
     start_date = None  # 全部警示
 
 # 篩選資料
+st.write(df["Alert Date"].describe(datetime_is_numeric=True))
 if "Alert Date" in df.columns:
     df["Alert Date"] = pd.to_datetime(df["Alert Date"], errors="coerce")
     if start_date:

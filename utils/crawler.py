@@ -3,24 +3,37 @@ from bs4 import BeautifulSoup
 
 def fetch_fda_dsc_alerts():
     url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
-    resp = requests.get(url)
-    print("🔍 HTTP status code:", resp.status_code)
-    print("🔍 HTML length:", len(resp.text))
+    try:
+        resp = requests.get(url, timeout=10)
+        print("🔍 HTTP status code:", resp.status_code)
+        print("🔍 HTML length:", len(resp.text))
 
-    if resp.status_code != 200:
+        if resp.status_code != 200:
+            print("⚠️ FDA 官網連線失敗，狀態碼：", resp.status_code)
+            return []
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # 嘗試新結構：抓取所有 <a> 標題連結
+        alerts = []
+        for item in soup.select("div.views-row div.field-content a"):
+            title = item.get_text(strip=True)
+            link = item["href"]
+            alerts.append({"title": title, "link": link})
+
+        print("✅ 成功抓取 FDA 警示數量：", len(alerts))
+        return alerts
+
+    except Exception as e:
+        print("❌ 抓取 FDA 官網失敗：", e)
         return []
 
-    soup = BeautifulSoup(resp.text, "html.parser")
-    alerts = []
-    for item in soup.select(".views-row"):
-        title = item.get_text(strip=True)
-        link = item.find("a")["href"] if item.find("a") else ""
-        alerts.append({"title": title, "link": link})
-
-    print("🔍 抓到的 alerts 數量:", len(alerts))
-    return alerts
-
 def parse_dsc_to_fda_list(alerts):
+    if not alerts:
+        print("⚠️ 警示清單為空，使用備援資料")
+        from utils.fallback_data import fda_list
+        return fda_list
+
     fda_list = []
     for alert in alerts[:3]:  # 測試版：只取前三筆
         title = alert["title"].lower()
@@ -57,6 +70,8 @@ def parse_dsc_to_fda_list(alerts):
                 "action_summary": "尚未解析",
                 "fda_excerpt": f"https://www.fda.gov{alert['link']}"
             })
+
+    print("✅ 成功解析 fda_list 數量：", len(fda_list))
     return fda_list
 
 def get_new_alerts():

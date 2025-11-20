@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# 載入自製模組
-from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list
+# 自製模組
+from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list, fetch_fda_dsc_current
 from utils.matcher import match_fda_to_tfda
 from utils.tfda_loader import load_tfda_data
 
@@ -18,19 +18,19 @@ if tfda_list:
 else:
     st.warning("⚠️ 無法載入 TFDA 許可證資料，請確認 data/tfda.json 是否存在且格式正確")
 
-# 抓取 FDA 官網警示
+# 抓取 FDA 官網警訊
 alerts = fetch_fda_dsc_alerts()
 fda_list = parse_dsc_to_fda_list(alerts)
 
 # 建立比對結果 DataFrame
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 
-# Sidebar：切換警示範圍
+# Sidebar：切換警示範圍（移除「全部警示」）
 with st.sidebar:
     st.markdown("---")
     date_range_option = st.radio(
         "📅 警示日期範圍",
-        ("近三個月", "近一年", "全部警示"),
+        ("近三個月", "近一年"),
         index=0
     )
 
@@ -45,16 +45,15 @@ if "Alert Date" in df.columns:
     elif date_range_option == "近一年":
         start_date = today - timedelta(days=365)
         df = df[df["Alert Date"] >= start_date]
-    # 全部警示 → 不篩選
 
 # 主頁面：關鍵字搜尋欄位
 keyword = st.text_input("🔍 關鍵字搜尋（產品名 / 成分 / 風險摘要）")
 if keyword:
     keyword_lower = keyword.lower()
     df = df[df.apply(
-        lambda row: keyword_lower in str(row["US Product"]).lower()
-        or keyword_lower in str(row["Ingredient"]).lower()
-        or keyword_lower in str(row["Risk Summary"]).lower(),
+        lambda row: keyword_lower in str(row.get("US Product", "")).lower()
+        or keyword_lower in str(row.get("Ingredient", "")).lower()
+        or keyword_lower in str(row.get("Risk Summary", "")).lower(),
         axis=1
     )]
 
@@ -70,6 +69,12 @@ if not df.empty:
     st.dataframe(df, use_container_width=True)
 else:
     st.info("目前沒有符合條件的 FDA 藥品警示。")
+
+# 顯示 FDA 官網目前 DSC 警訊（簡易表格）
+with st.expander("📢 FDA 官網目前 DSC 藥品警訊"):
+    current_alerts = fetch_fda_dsc_current()
+    st.write(f"共 {len(current_alerts)} 筆")
+    st.table(current_alerts)
 
 # Sidebar 註記
 with st.sidebar:

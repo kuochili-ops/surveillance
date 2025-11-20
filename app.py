@@ -1,6 +1,30 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import re
+
+def extract_product_and_ingredient(title):
+    # 嘗試從標題中擷取 "Leqembi (lecanemab)" 結構
+    match = re.search(r"([A-Za-z0-9\-]+)\s*\(([^)]+)\)", title)
+    if match:
+        return match.group(1), match.group(2)
+    return "", ""
+
+def parse_dsc_to_fda_list(alerts):
+    results = []
+    for alert in alerts:
+        product, ingredient = extract_product_and_ingredient(alert.get("title", ""))
+        results.append({
+            "alert_date": alert.get("alert_date", ""),
+            "source": alert.get("source", "FDA"),
+            "us_product": product,
+            "ingredient": ingredient,
+            "risk_summary": alert.get("title", ""),
+            "action_summary": "",
+            "fda_excerpt": alert.get("title", "")
+        })
+    return results
+
 
 # 自製模組
 from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list, fetch_fda_dsc_current
@@ -77,6 +101,7 @@ else:
 # 顯示 FDA 官網目前 DSC 警訊（簡易表格）
 with st.expander("📢 FDA 官網目前 DSC 藥品警訊"):
     current_alerts = fetch_fda_dsc_current()
+    st.write("current_alerts 原始資料：", current_alerts)
     st.write(f"共 {len(current_alerts)} 筆")
     st.table(current_alerts)
 

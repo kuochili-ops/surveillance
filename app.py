@@ -51,7 +51,9 @@ if not fda_list:
     st.stop()
 
 # 建立比對結果 DataFrame（保證欄位完整）
-df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
+df_raw = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
+df = df_raw.copy()
+
 
 # Sidebar：切換警示範圍
 with st.sidebar:
@@ -87,13 +89,14 @@ if keyword:
 
 # 篩選診斷區塊
 with st.expander("📊 篩選診斷"):
-    if "Alert Date" in df.columns:
-        st.write("目前筆數：", len(df))
-        st.write("最早日期：", df["Alert Date"].min())
-        st.write("最晚日期：", df["Alert Date"].max())
-        st.write("無效日期筆數（NaT）：", df["Alert Date"].isna().sum())
+    if "Alert Date" in df_raw.columns:
+        df_raw["Alert Date"] = pd.to_datetime(df_raw["Alert Date"], errors="coerce")
+        st.write("目前筆數（未篩選）：", len(df_raw))
+        st.write("最早日期：", df_raw["Alert Date"].min())
+        st.write("最晚日期：", df_raw["Alert Date"].max())
+        st.write("無效日期筆數（NaT）：", df_raw["Alert Date"].isna().sum())
     else:
-        st.write("⚠️ DataFrame 中沒有 'Alert Date' 欄位，現有欄位：", df.columns.tolist())
+        st.write("⚠️ DataFrame 中沒有 'Alert Date' 欄位，現有欄位：", df_raw.columns.tolist())
 
 # 顯示結果
 if not df.empty:

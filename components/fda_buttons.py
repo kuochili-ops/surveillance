@@ -4,17 +4,12 @@ from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list, get_new_a
 from utils.matcher import match_fda_to_tfda
 
 def render_fda_buttons(tfda_list):
-    # 一鍵抓取並比對
+    # 一鍵抓取並比對 FDA 官網警示
     st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
     if st.button("立即更新"):
-        latest_alerts = fetch_fda_dsc_alerts()
-        st.write("🔍 Debug Step 1: 抓到的 alerts", latest_alerts)
-
-        fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
-        st.write("🔍 Debug Step 2: 解析後的 fda_list", fda_list_from_web)
-
-        df_web = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
-        st.write("🔍 Debug Step 3: 比對結果 df_web", df_web)
+        alerts = fetch_fda_dsc_alerts()
+        fda_list = parse_dsc_to_fda_list(alerts)
+        df_web = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 
         if not df_web.empty and "Alert Date" in df_web.columns:
             df_web["Alert Date"] = pd.to_datetime(df_web["Alert Date"])
@@ -22,18 +17,13 @@ def render_fda_buttons(tfda_list):
         else:
             st.warning("⚠️ 官網警示比對失敗或資料格式異常。")
 
-    # 檢查新警示
+    # 檢查是否有新警示
     st.markdown("### 🔍 檢查 FDA 官網是否有新警示")
     if st.button("檢查新警示並比對"):
         new_alerts = get_new_alerts()
-        st.write("🔍 Debug Step 1: 新抓到的 alerts", new_alerts)
-
         if new_alerts:
             fda_list_new = parse_dsc_to_fda_list(new_alerts)
-            st.write("🔍 Debug Step 2: 解析後的 fda_list_new", fda_list_new)
-
             df_new = pd.DataFrame(match_fda_to_tfda(fda_list_new, tfda_list))
-            st.write("🔍 Debug Step 3: 比對結果 df_new", df_new)
 
             if not df_new.empty and "Alert Date" in df_new.columns:
                 df_new["Alert Date"] = pd.to_datetime(df_new["Alert Date"])

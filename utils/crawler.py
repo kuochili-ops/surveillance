@@ -6,9 +6,8 @@ def fetch_fda_dsc_alerts():
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # 找到 Current Drug Safety Communications 區塊
-    section = soup.find("div", {"class": "view-content"})
     alerts = []
+    section = soup.find("div", {"class": "view-content"})
     if section:
         items = section.find_all("div", {"class": "views-row"})
         for item in items:
@@ -28,8 +27,8 @@ def parse_dsc_to_fda_list(alerts):
         results.append({
             "alert_date": alert.get("alert_date", ""),
             "source": alert.get("source", "FDA"),
-            "us_product": "",          # 這裡可以再加解析邏輯
-            "ingredient": "",          # 這裡可以再加解析邏輯
+            "us_product": "",          # 可再加解析邏輯
+            "ingredient": "",          # 可再加解析邏輯
             "risk_summary": alert.get("title", ""),
             "action_summary": "",
             "fda_excerpt": alert.get("title", "")
@@ -37,5 +36,4 @@ def parse_dsc_to_fda_list(alerts):
     return results
 
 def fetch_fda_dsc_current():
-    # 直接回傳 fetch_fda_dsc_alerts() 的結果
     return fetch_fda_dsc_alerts()

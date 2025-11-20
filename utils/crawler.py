@@ -8,11 +8,13 @@ def fetch_fda_dsc_alerts():
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        print("✅ FDA 官網連線成功")
+        with open("fda_page.html", "w", encoding="utf-8") as f:
+            f.write(response.text)
+        print("✅ HTML 已儲存為 fda_page.html")
     except Exception as e:
         print(f"❌ FDA 官網連線失敗：{e}")
         return fallback_alerts()
-
+    
     soup = BeautifulSoup(response.text, "html.parser")
     section = soup.find("div", class_="view-content")
     if not section:

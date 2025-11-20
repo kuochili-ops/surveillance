@@ -44,7 +44,7 @@ def parse_dsc_to_fda_list(alerts):
         if "prolia" in title:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "DSC",
+                "source": "FDA",
                 "us_product": "Prolia",
                 "ingredient": "denosumab",
                 "form": "60 mg/1 mL 注射液",
@@ -55,7 +55,7 @@ def parse_dsc_to_fda_list(alerts):
         elif "leqembi" in title:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "DSC",
+                "source": "FDA",
                 "us_product": "Leqembi",
                 "ingredient": "lecanemab",
                 "form": "100 mg/mL 注射液",
@@ -66,7 +66,7 @@ def parse_dsc_to_fda_list(alerts):
         elif "jynarque" in title:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "DSC",
+                "source": "FDA",
                 "us_product": "Jynarque",
                 "ingredient": "tolvaptan",
                 "form": "30 mg 錠劑",
@@ -77,7 +77,7 @@ def parse_dsc_to_fda_list(alerts):
         else:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "DSC",
+                "source": "FDA",
                 "us_product": alert["title"],
                 "ingredient": "未知",
                 "form": "未知",
@@ -93,3 +93,23 @@ def get_new_alerts():
     latest = fetch_fda_dsc_alerts()
     latest_titles = {a["title"] for a in latest}
 
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, "r", encoding="utf-8") as f:
+            cached = json.load(f)
+        cached_titles = {a["title"] for a in cached}
+    else:
+        cached_titles = set()
+
+    new_titles = latest_titles - cached_titles
+    new_alerts = [a for a in latest if a["title"] in new_titles]
+
+    # 更新快取
+    try:
+        with open(CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(latest, f, ensure_ascii=False, indent=2)
+        print("✅ 快取已更新")
+    except Exception as e:
+        print("⚠️ 快取更新失敗：", e)
+
+    print(f"🔍 新警示數量：{len(new_alerts)}")
+    return new_alerts

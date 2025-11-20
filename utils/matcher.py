@@ -7,7 +7,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
     results = []
 
     for fda in fda_list:
-        # 嘗試比對 TFDA（這裡簡化為名稱比對，你可以依需求改進）
+        # 嘗試比對 TFDA（這裡簡化為成分比對，你可以依需求改進）
         matched_tfda = None
         if tfda_list:
             for tfda in tfda_list:

@@ -46,11 +46,17 @@ else:
     start_date = None  # 全部警示
 
 # 篩選資料
-st.write(df["Alert Date"].describe(datetime_is_numeric=True))
 if "Alert Date" in df.columns:
     df["Alert Date"] = pd.to_datetime(df["Alert Date"], errors="coerce")
     if start_date:
         df = df[df["Alert Date"] >= start_date]
+
+# 篩選診斷區塊
+with st.expander("📊 篩選診斷"):
+    st.write("原始筆數：", len(df))
+    st.write("最早日期：", df["Alert Date"].min())
+    st.write("最晚日期：", df["Alert Date"].max())
+    st.write("無效日期筆數：", df["Alert Date"].isna().sum())
 
 # 顯示結果
 if not df.empty:
@@ -60,5 +66,5 @@ else:
 
 # Sidebar 註記
 with st.sidebar:
-    st.caption(f"📘 DSC（Drug Safety Communication）是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")
+    st.caption("📘 DSC（Drug Safety Communication）是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")
     st.caption(f"📅 系統目前顯示「{date_range_option}」內的 FDA 藥品警示")

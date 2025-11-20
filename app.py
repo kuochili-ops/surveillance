@@ -11,13 +11,10 @@ def extract_product_and_ingredient(title):
     return "", ""
 
 # 匯入自製模組
-try:
-    from utils.crawler import fetch_fda_dsc_alerts, fetch_fda_dsc_current
-    from utils.matcher import match_fda_to_tfda
-    from utils.tfda_loader import load_tfda_data
-except ImportError as e:
-    st.error(f"❌ 無法匯入模組：{e}")
-    st.stop()
+from utils.crawler import fetch_fda_dsc_alerts
+from utils.selenium_crawler import fetch_fda_dsc_alerts_selenium
+from utils.matcher import match_fda_to_tfda
+from utils.tfda_loader import load_tfda_data
 
 # FDA 警訊解析
 def parse_dsc_to_fda_list(alerts):
@@ -25,7 +22,7 @@ def parse_dsc_to_fda_list(alerts):
     for alert in alerts:
         product, ingredient = extract_product_and_ingredient(alert.get("title", ""))
         results.append({
-            "alert_date": alert.get("alert_date", None),  # ⚠️ 如果沒有日期就用 None
+            "alert_date": alert.get("alert_date", None),
             "source": alert.get("source", "FDA"),
             "us_product": product,
             "ingredient": ingredient,
@@ -39,6 +36,11 @@ def parse_dsc_to_fda_list(alerts):
 st.set_page_config(page_title="藥品警訊系統", layout="wide")
 st.title("藥品警訊系統")
 
+# Sidebar：爬蟲模式切換
+with st.sidebar:
+    st.markdown("### ⚙️ 爬蟲模式")
+    crawler_mode = st.radio("選擇資料來源", ("Requests", "Selenium"), index=0)
+
 # 載入 TFDA 資料
 tfda_list = load_tfda_data()
 if tfda_list:
@@ -47,11 +49,15 @@ else:
     st.warning("⚠️ 無法載入 TFDA 許可證資料，請確認 data/tfda.json 是否存在且格式正確")
 
 # 抓取 FDA 官網警訊
-alerts = fetch_fda_dsc_alerts()
+if crawler_mode == "Requests":
+    alerts = fetch_fda_dsc_alerts()
+else:
+    alerts = fetch_fda_dsc_alerts_selenium()
+
 fda_list = parse_dsc_to_fda_list(alerts)
 
 if not fda_list:
-    st.error("⚠️ 無法取得 FDA 藥品警訊資料，請檢查 crawler.py 或網路連線")
+    st.error("⚠️ 無法取得 FDA 藥品警訊資料，請檢查 crawler 或 selenium_crawler")
     st.stop()
 
 # 建立比對結果 DataFrame
@@ -114,17 +120,7 @@ with st.expander("🧪 FDA 成分比對診斷"):
     else:
         st.success("✅ 所有 FDA 成分皆成功比對 TFDA")
 
-# 顯示 FDA 官網目前 DSC 警訊
-with st.expander("📢 FDA 官網目前 DSC 藥品警訊"):
-    current_alerts = fetch_fda_dsc_current()
-    st.write("current_alerts 原始資料：", current_alerts)
-    st.write(f"共 {len(current_alerts)} 筆")
-    if current_alerts:
-        st.table(current_alerts)
-    else:
-        st.error("⚠️ FDA 官網 DSC 警訊目前無法載入或解析")
-
 # Sidebar 註記
 with st.sidebar:
     st.caption("📘 DSC（Drug Safety Communication）是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")
-    st.caption(f"📅 系統目前顯示「{date_range_option}」內的 FDA 藥品警示")
+    st.caption(f"📅 系統

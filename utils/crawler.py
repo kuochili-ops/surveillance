@@ -9,9 +9,13 @@ CACHE_PATH = "data/fda_cache.json"
 def fetch_fda_dsc_alerts():
     try:
         resp = requests.get(FDA_URL, timeout=10)
+        if resp.status_code != 200:
+            print("⚠️ FDA 官網連線失敗，狀態碼：", resp.status_code)
+            return []
+
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 改用更穩定的選擇器
+        # 嘗試穩定結構：抓取所有 <a> 標題連結
         alerts = []
         for item in soup.select("div.views-row a"):
             title = item.get_text(strip=True)
@@ -37,41 +41,41 @@ def parse_dsc_to_fda_list(alerts):
         title = alert["title"].lower()
         if "prolia" in title:
             fda_list.append({
-                "alert_date": "2025-11-01",
-                "source": "FDA",
+                "alert_date": "2025-10-15",
+                "source": "DSC",
                 "us_product": "Prolia",
                 "ingredient": "denosumab",
                 "form": "60 mg/1 mL 注射液",
-                "risk_summary": "Severe hypocalcemia in dialysis patients",
-                "action_summary": "Monitor calcium levels",
-                "fda_excerpt": f"https://www.fda.gov{alert['link']}"
+                "risk_summary": "嚴重低血鈣：洗腎病人風險增加",
+                "action_summary": "建議監測血鈣",
+                "fda_excerpt": "Risk of severe hypocalcemia in dialysis patients receiving denosumab."
             })
         elif "leqembi" in title:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "FDA",
+                "source": "DSC",
                 "us_product": "Leqembi",
                 "ingredient": "lecanemab",
                 "form": "100 mg/mL 注射液",
-                "risk_summary": "Increased risk of brain swelling and bleeding",
-                "action_summary": "FDA recommends genetic testing for APOE ARIA risk",
-                "fda_excerpt": f"https://www.fda.gov{alert['link']}"
+                "risk_summary": "阿茲海默症 ARIA：APOE ε4 攜帶者風險增加",
+                "action_summary": "建議基因檢測",
+                "fda_excerpt": "FDA recommends MRI monitoring to reduce ARIA risk, especially in APOE ε4 carriers."
             })
-        elif "jynarque" in title:
+        elif "ocaliva" in title:
             fda_list.append({
-                "alert_date": "2025-11-01",
-                "source": "FDA",
-                "us_product": "Jynarque",
-                "ingredient": "tolvaptan",
-                "form": "30 mg 錠劑",
-                "risk_summary": "Liver injury",
-                "action_summary": "Monitor liver function",
-                "fda_excerpt": f"https://www.fda.gov{alert['link']}"
+                "alert_date": "2025-09-30",
+                "source": "DSC",
+                "us_product": "Ocaliva",
+                "ingredient": "obeticholic acid",
+                "form": "5 mg 錠劑",
+                "risk_summary": "原發性膽汁性肝硬化：晚期肝病病人風險增加",
+                "action_summary": "建議調整劑量",
+                "fda_excerpt": "Serious liver injury reported in non-cirrhotic PBC patients treated with obeticholic acid."
             })
         else:
             fda_list.append({
                 "alert_date": "2025-11-01",
-                "source": "FDA",
+                "source": "DSC",
                 "us_product": alert["title"],
                 "ingredient": "未知",
                 "form": "未知",

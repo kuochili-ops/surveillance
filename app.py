@@ -10,6 +10,13 @@ def extract_product_and_ingredient(title):
         return match.group(1), match.group(2)
     return "", ""
 
+try:
+    from utils.crawler import fetch_fda_dsc_alerts, fetch_fda_dsc_current
+except ImportError as e:
+    st.error(f"❌ 無法匯入 crawler 模組：{e}")
+    st.stop()
+
+
 # FDA 警訊解析
 def parse_dsc_to_fda_list(alerts):
     results = []

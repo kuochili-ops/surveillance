@@ -13,6 +13,8 @@ today = datetime.today()
 three_months_ago = today - timedelta(days=90)
 
 # 篩選警示日期，只保留近三個月
+df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
+
 if "Alert Date" in df.columns:
     df["Alert Date"] = pd.to_datetime(df["Alert Date"], errors="coerce")
     df = df[df["Alert Date"] >= three_months_ago]

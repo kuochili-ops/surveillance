@@ -4,17 +4,23 @@ from utils.crawler import fetch_fda_dsc_alerts, parse_dsc_to_fda_list, get_new_a
 from utils.matcher import match_fda_to_tfda
 
 def render_fda_buttons(tfda_list):
-    # 一鍵抓取並比對
     st.markdown("### 🔁 一鍵抓取並比對 FDA 官網警示")
     if st.button("立即更新"):
         latest_alerts = fetch_fda_dsc_alerts()
+        st.write("🔍 Debug: 抓到的 alerts", latest_alerts)
+
         fda_list_from_web = parse_dsc_to_fda_list(latest_alerts)
+        st.write("🔍 Debug: 解析後的 fda_list", fda_list_from_web)
+
         df_web = pd.DataFrame(match_fda_to_tfda(fda_list_from_web, tfda_list))
+        st.write("🔍 Debug: 比對結果 df_web", df_web)
+
         if not df_web.empty and "Alert Date" in df_web.columns:
             df_web["Alert Date"] = pd.to_datetime(df_web["Alert Date"])
             st.dataframe(df_web, use_container_width=True)
         else:
             st.warning("⚠️ 官網警示比對失敗或資料格式異常。")
+
 
     # 檢查新警示
     st.markdown("### 🔍 檢查 FDA 官網是否有新警示")

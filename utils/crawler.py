@@ -9,21 +9,15 @@ CACHE_PATH = "data/fda_cache.json"
 def fetch_fda_dsc_alerts():
     try:
         resp = requests.get(FDA_URL, timeout=10)
-        print("🔍 HTTP status code:", resp.status_code)
-        print("🔍 HTML length:", len(resp.text))
-
-        if resp.status_code != 200:
-            print("⚠️ FDA 官網連線失敗，狀態碼：", resp.status_code)
-            return []
-
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 嘗試新結構：抓取所有 <a> 標題連結
+        # 改用更穩定的選擇器
         alerts = []
-        for item in soup.select("div.views-row div.field-content a"):
+        for item in soup.select("div.views-row a"):
             title = item.get_text(strip=True)
-            link = item["href"]
-            alerts.append({"title": title, "link": link})
+            link = item.get("href", "")
+            if title and link:
+                alerts.append({"title": title, "link": link})
 
         print("✅ 成功抓取 FDA 警示數量：", len(alerts))
         return alerts

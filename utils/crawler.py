@@ -9,6 +9,11 @@ def extract_product_and_ingredient(title):
         return match.group(1), match.group(2)
     return "", ""
 
+# 日期解析工具：從 URL 中推斷日期
+def extract_date_from_url(href):
+    match = re.search(r"/(\d{4}-\d{2}-\d{2})-", href)
+    return match.group(1) if match else None
+
 # 主爬蟲：FDA DSC 警訊
 def fetch_fda_dsc_alerts():
     url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
@@ -28,11 +33,13 @@ def fetch_fda_dsc_alerts():
     alerts = []
     for tag in alert_links:
         title = tag.get("title", "").strip()
+        href = tag.get("href", "")
         if not title or "Drug Safety Communication" not in title:
             continue
         product, ingredient = extract_product_and_ingredient(title)
+        alert_date = extract_date_from_url(href) or "2025-11-01"
         alerts.append({
-            "alert_date": "2025-11-01",  # ⚠️ 暫時無法取得真實日期
+            "alert_date": alert_date,
             "title": title,
             "source": "DSC",
             "us_product": product,

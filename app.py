@@ -23,6 +23,7 @@ alerts = fetch_fda_dsc_alerts()
 fda_list = parse_dsc_to_fda_list(alerts)
 
 # 建立比對結果 DataFrame（保證欄位完整）
+st.write("fda_list 原始資料：", fda_list)
 df = pd.DataFrame(match_fda_to_tfda(fda_list, tfda_list))
 
 # Sidebar：切換警示範圍（移除「全部警示」）

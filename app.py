@@ -47,9 +47,20 @@ if "Alert Date" in df.columns:
         df = df[df["Alert Date"] >= start_date]
     # 全部警示 → 不篩選
 
+# 主頁面：關鍵字搜尋欄位
+keyword = st.text_input("🔍 關鍵字搜尋（產品名 / 成分 / 風險摘要）")
+if keyword:
+    keyword_lower = keyword.lower()
+    df = df[df.apply(
+        lambda row: keyword_lower in str(row["US Product"]).lower()
+        or keyword_lower in str(row["Ingredient"]).lower()
+        or keyword_lower in str(row["Risk Summary"]).lower(),
+        axis=1
+    )]
+
 # 篩選診斷區塊
 with st.expander("📊 篩選診斷"):
-    st.write("原始筆數（含 NaT）：", len(df))
+    st.write("目前筆數：", len(df))
     st.write("最早日期：", df["Alert Date"].min())
     st.write("最晚日期：", df["Alert Date"].max())
     st.write("無效日期筆數（NaT）：", df["Alert Date"].isna().sum())
@@ -58,7 +69,7 @@ with st.expander("📊 篩選診斷"):
 if not df.empty:
     st.dataframe(df, use_container_width=True)
 else:
-    st.info("目前沒有符合篩選條件的 FDA 藥品警示。")
+    st.info("目前沒有符合條件的 FDA 藥品警示。")
 
 # Sidebar 註記
 with st.sidebar:

@@ -97,7 +97,6 @@ def fetch_fda_dsc_alerts():
         return []
     soup = BeautifulSoup(resp.text, "html.parser")
     alerts = []
-    # 這裡要根據 FDA 官網的 HTML 結構來解析
     for item in soup.select(".views-row"):
         title = item.get_text(strip=True)
         link = item.find("a")["href"] if item.find("a") else ""
@@ -107,11 +106,10 @@ def fetch_fda_dsc_alerts():
 def parse_dsc_to_fda_list(alerts):
     fda_list = []
     for alert in alerts:
-        # TODO: 解析 alert 頁面內容，抽取成分、劑型、摘要等
         fda_list.append({
-            "alert_date": "2025-11-20",  # 需從頁面解析
+            "alert_date": "2025-11-20",  # TODO: 從 alert 頁面解析
             "source": "DSC",
-            "us_product": alert["title"],  # 暫用標題
+            "us_product": alert["title"],
             "ingredient": "",
             "form": "",
             "risk_summary": "",
@@ -121,11 +119,8 @@ def parse_dsc_to_fda_list(alerts):
     return fda_list
 
 def get_new_alerts():
-    # TODO: 可以先抓取最新清單，與本地快取比對
     latest = fetch_fda_dsc_alerts()
-    # 假設目前沒有快取，就直接回傳全部
     return latest
-
 # 預設 FDA 藥品清單
 fda_list = [
     {

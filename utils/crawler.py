@@ -1,3 +1,9 @@
+def fetch_fda_dsc_current():
+    """
+    取得 FDA 官網目前 DSC 藥品警訊
+    """
+    return fetch_fda_dsc_alerts()
+
 def fetch_fda_dsc_alerts():
     url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
     headers = {"User-Agent": "Mozilla/5.0"}

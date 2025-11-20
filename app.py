@@ -12,7 +12,6 @@ def extract_product_and_ingredient(title):
 
 # 匯入自製模組
 from utils.crawler import fetch_fda_dsc_alerts
-from utils.selenium_crawler import fetch_fda_dsc_alerts_selenium
 from utils.matcher import match_fda_to_tfda
 from utils.tfda_loader import load_tfda_data
 
@@ -51,13 +50,14 @@ else:
 # 抓取 FDA 官網警訊
 if crawler_mode == "Requests":
     alerts = fetch_fda_dsc_alerts()
-else:
-    alerts = fetch_fda_dsc_alerts_selenium()
+elif crawler_mode == "Selenium":
+    st.warning("⚠️ Selenium 模式無法在 Streamlit Cloud 執行，已自動改用 fallback 資料")
+    alerts = fetch_fda_dsc_alerts()
 
 fda_list = parse_dsc_to_fda_list(alerts)
 
 if not fda_list:
-    st.error("⚠️ 無法取得 FDA 藥品警訊資料，請檢查 crawler 或 selenium_crawler")
+    st.error("⚠️ 無法取得 FDA 藥品警訊資料，請檢查 crawler.py 或網路連線")
     st.stop()
 
 # 建立比對結果 DataFrame
@@ -99,7 +99,7 @@ with st.expander("📊 篩選診斷"):
     st.write("最早日期（已篩選）：", df["Alert Date"].min() if not df.empty else "無資料")
     st.write("最晚日期（已篩選）：", df["Alert Date"].max() if not df.empty else "無資料")
     st.write("無效日期筆數（NaT）：", df_raw["Alert Date"].isna().sum())
-    st.caption(f"📅 篩選起始日：{start_date.date()}（依據「{date_range_option}」選項）")
+    st.caption(f"📅 系統目前顯示「{date_range_option}」內的 FDA 藥品警示")
 
 # 顯示結果
 if not df.empty:
@@ -124,4 +124,3 @@ with st.expander("🧪 FDA 成分比對診斷"):
 with st.sidebar:
     st.caption("📘 DSC（Drug Safety Communication）是 FDA 發布的藥品安全警示，內容包含新發現的副作用、風險族群與使用建議。")
     st.caption(f"📅 系統目前顯示「{date_range_option}」內的 FDA 藥品警示")
-

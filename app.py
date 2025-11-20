@@ -59,10 +59,13 @@ if keyword:
 
 # 篩選診斷區塊
 with st.expander("📊 篩選診斷"):
-    st.write("目前筆數：", len(df))
-    st.write("最早日期：", df["Alert Date"].min())
-    st.write("最晚日期：", df["Alert Date"].max())
-    st.write("無效日期筆數（NaT）：", df["Alert Date"].isna().sum())
+    if "Alert Date" in df.columns:
+        st.write("目前筆數：", len(df))
+        st.write("最早日期：", df["Alert Date"].min())
+        st.write("最晚日期：", df["Alert Date"].max())
+        st.write("無效日期筆數（NaT）：", df["Alert Date"].isna().sum())
+    else:
+        st.write("⚠️ DataFrame 中沒有 'Alert Date' 欄位，現有欄位：", df.columns.tolist())
 
 # 顯示結果
 if not df.empty:

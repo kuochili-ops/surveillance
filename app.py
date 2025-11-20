@@ -14,6 +14,12 @@ st.title("藥品警訊系統")
 # 載入 TFDA 資料
 tfda_list = load_tfda_data()
 
+# 顯示載入狀態
+if tfda_list:
+    st.success(f"✅ 已載入 TFDA 許可證資料，共 {len(tfda_list)} 筆")
+else:
+    st.warning("⚠️ 無法載入 TFDA 許可證資料，請確認 data/tfda.json 是否存在且格式正確")
+    
 # 抓取 FDA 官網警示
 alerts = fetch_fda_dsc_alerts()
 fda_list = parse_dsc_to_fda_list(alerts)

@@ -1,77 +1,31 @@
-from difflib import SequenceMatcher
-from utils.helpers import normalize_text
-
-def fuzzy_match(a, b):
-    return SequenceMatcher(None, a, b).ratio()
-
-def compute_match_score(fda, tfda):
-    fda_ing = normalize_text(fda.get("ingredient", ""))
-    tfda_ing = normalize_text(tfda.get("ingredient", ""))
-    fda_form = normalize_text(fda.get("form", ""))
-    tfda_form = normalize_text(tfda.get("form", ""))
-    fda_prod = normalize_text(fda.get("us_product", ""))
-    tfda_prod = normalize_text(tfda.get("product_name", ""))
-
-    score = 0.0
-    if fda_ing and tfda_ing:
-        if fda_ing == tfda_ing:
-            score += 0.6
-        elif fda_ing.split()[0] == tfda_ing.split()[0]:
-            score += 0.5
-
-    if fda_form and tfda_form:
-        if fda_form == tfda_form:
-            score += 0.3
-        elif fda_form.split()[0] == tfda_form.split()[0]:
-            score += 0.2
-
-    if fda_prod and tfda_prod:
-        sim = fuzzy_match(fda_prod, tfda_prod)
-        if sim >= 0.85:
-            score += 0.1
-        elif sim >= 0.7:
-            score += 0.05
-
-    return round(score, 2)
-
 def match_fda_to_tfda(fda_list, tfda_list):
+    """
+    將 FDA 藥品警訊與 TFDA 許可證資料比對，並保證輸出欄位完整。
+    即使沒有比對成功或資料缺漏，也會填入空字串。
+    """
+
     results = []
+
     for fda in fda_list:
-        best_match = None
-        best_score = 0.0
-        for tfda in tfda_list:
-            score = compute_match_score(fda, tfda)
-            if score > best_score:
-                best_score = score
-                best_match = tfda
-        if best_match and best_score >= 0.5:
-            results.append({
-                "Alert Date": fda.get("alert_date", ""),
-                "Source": fda.get("source", ""),
-                "US Product": fda.get("us_product", ""),
-                "Ingredient": fda.get("ingredient", ""),
-                "Risk Summary": fda.get("risk_summary", ""),
-                "Action Summary": fda.get("action_summary", ""),
-                "TW Match Status": "同主成分" if best_score >= 0.85 else "中信度配對",
-                "TW Product": best_match.get("product_name", ""),
-                "License ID": best_match.get("license_no", ""),
-                "Strength/Form": best_match.get("form", ""),
-                "Match Confidence": best_score,
-                "FDA Excerpt": fda.get("fda_excerpt", "")
-            })
-        else:
-            results.append({
-                "Alert Date": fda.get("alert_date", ""),
-                "Source": fda.get("source", ""),
-                "US Product": fda.get("us_product", ""),
-                "Ingredient": fda.get("ingredient", ""),
-                "Risk Summary": fda.get("risk_summary", ""),
-                "Action Summary": fda.get("action_summary", ""),
-                "TW Match Status": "無配對",
-                "TW Product": "",
-                "License ID": "",
-                "Strength/Form": "",
-                "Match Confidence": 0.0,
-                "FDA Excerpt": fda.get("fda_excerpt", "")
-            })
+        # 嘗試比對 TFDA（這裡簡化為名稱比對，你可以依需求改進）
+        matched_tfda = None
+        if tfda_list:
+            for tfda in tfda_list:
+                if fda.get("ingredient", "").lower() == tfda.get("ingredient", "").lower():
+                    matched_tfda = tfda
+                    break
+
+        results.append({
+            # 保證欄位完整
+            "Alert Date": fda.get("alert_date", ""),
+            "Source": fda.get("source", "FDA"),
+            "US Product": fda.get("us_product", ""),
+            "Ingredient": fda.get("ingredient", ""),
+            "Risk Summary": fda.get("risk_summary", ""),
+            "Action Summary": fda.get("action_summary", ""),
+            "FDA Excerpt": fda.get("fda_excerpt", ""),
+            "TFDA License": matched_tfda.get("license_no", "") if matched_tfda else "",
+            "TFDA Product": matched_tfda.get("product_name", "") if matched_tfda else "",
+        })
+
     return results

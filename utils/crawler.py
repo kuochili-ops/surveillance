@@ -4,14 +4,20 @@ from bs4 import BeautifulSoup
 def fetch_fda_dsc_alerts():
     url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
     resp = requests.get(url)
+    print("🔍 HTTP status code:", resp.status_code)
+    print("🔍 HTML length:", len(resp.text))
+
     if resp.status_code != 200:
         return []
+
     soup = BeautifulSoup(resp.text, "html.parser")
     alerts = []
     for item in soup.select(".views-row"):
         title = item.get_text(strip=True)
         link = item.find("a")["href"] if item.find("a") else ""
         alerts.append({"title": title, "link": link})
+
+    print("🔍 抓到的 alerts 數量:", len(alerts))
     return alerts
 
 def parse_dsc_to_fda_list(alerts):

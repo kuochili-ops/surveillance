@@ -10,7 +10,8 @@ def compute_match_score(fda, tfda):
     fda_form = normalize_text(fda.get("form", ""))
     tfda_form = normalize_text(tfda.get("form", ""))
     fda_prod = normalize_text(fda.get("us_product", ""))
-    tfda_prod = normalize_text(tfda.get("tw_product", ""))
+    tfda_prod = normalize_text(tfda.get("product_name", ""))
+
 
     score = 0.0
     if fda_ing and tfda_ing:
@@ -53,7 +54,7 @@ def match_fda_to_tfda(fda_list, tfda_list):
                 "Risk Summary": fda["risk_summary"],
                 "Action Summary": fda["action_summary"],
                 "TW Match Status": "同主成分" if best_score >= 0.85 else "中信度配對",
-                "TW Product": best_match["tw_product"],
+                "TW Product": best_match.get("product_name", ""),
                 "License ID": best_match["license_id"],
                 "Strength/Form": best_match["form"],
                 "Match Confidence": best_score,

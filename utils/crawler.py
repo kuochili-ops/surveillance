@@ -1,10 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
+import json
+import os
+
+FDA_URL = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
+CACHE_PATH = "data/fda_cache.json"
 
 def fetch_fda_dsc_alerts():
-    url = "https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications"
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(FDA_URL, timeout=10)
         print("🔍 HTTP status code:", resp.status_code)
         print("🔍 HTML length:", len(resp.text))
 
@@ -39,35 +43,46 @@ def parse_dsc_to_fda_list(alerts):
         title = alert["title"].lower()
         if "prolia" in title:
             fda_list.append({
-                "alert_date": "2025-11-20",
+                "alert_date": "2025-11-01",
                 "source": "DSC",
                 "us_product": "Prolia",
                 "ingredient": "denosumab",
                 "form": "60 mg/1 mL 注射液",
-                "risk_summary": "洗腎病人低血鈣風險",
-                "action_summary": "建議監測血鈣",
+                "risk_summary": "Severe hypocalcemia in dialysis patients",
+                "action_summary": "Monitor calcium levels",
                 "fda_excerpt": f"https://www.fda.gov{alert['link']}"
             })
         elif "leqembi" in title:
             fda_list.append({
-                "alert_date": "2025-11-20",
+                "alert_date": "2025-11-01",
                 "source": "DSC",
                 "us_product": "Leqembi",
                 "ingredient": "lecanemab",
                 "form": "100 mg/mL 注射液",
-                "risk_summary": "APOE ε4 攜帶者 ARIA 風險增加",
-                "action_summary": "建議 MRI 監測與基因檢測",
+                "risk_summary": "Increased risk of brain swelling and bleeding",
+                "action_summary": "FDA recommends genetic testing for APOE ARIA risk",
+                "fda_excerpt": f"https://www.fda.gov{alert['link']}"
+            })
+        elif "jynarque" in title:
+            fda_list.append({
+                "alert_date": "2025-11-01",
+                "source": "DSC",
+                "us_product": "Jynarque",
+                "ingredient": "tolvaptan",
+                "form": "30 mg 錠劑",
+                "risk_summary": "Liver injury",
+                "action_summary": "Monitor liver function",
                 "fda_excerpt": f"https://www.fda.gov{alert['link']}"
             })
         else:
             fda_list.append({
-                "alert_date": "2025-11-20",
+                "alert_date": "2025-11-01",
                 "source": "DSC",
                 "us_product": alert["title"],
                 "ingredient": "未知",
                 "form": "未知",
                 "risk_summary": "尚未解析",
-                "action_summary": "尚未解析",
+                "action_summary": "請參考 FDA 原文摘要",
                 "fda_excerpt": f"https://www.fda.gov{alert['link']}"
             })
 
@@ -76,4 +91,5 @@ def parse_dsc_to_fda_list(alerts):
 
 def get_new_alerts():
     latest = fetch_fda_dsc_alerts()
-    return latest
+    latest_titles = {a["title"] for a in latest}
+
